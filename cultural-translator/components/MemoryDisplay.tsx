@@ -102,16 +102,16 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
 
   if (loading && !isRefreshing) {
     return (
-      <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full">
+      <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 h-full">
         <div className="flex items-center gap-3 mb-6">
           <span className="text-2xl">🧠</span>
-          <h2 className="text-xl font-semibold text-gray-800">Agent Memory</h2>
+          <h2 className="text-xl font-semibold text-white">Agent Memory</h2>
         </div>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="p-4 rounded-xl bg-gray-100 animate-pulse">
-              <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            <div key={i} className="p-4 rounded-xl bg-white/5 animate-pulse">
+              <div className="h-4 bg-white/20 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-white/10 rounded w-1/2"></div>
             </div>
           ))}
         </div>
@@ -120,10 +120,10 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
   }
 
   return (
-    <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full relative overflow-hidden">
+    <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 h-full relative overflow-hidden hover:bg-white/15 transition-all duration-300">
       {/* Refresh Animation */}
       {isRefreshing && (
-        <div className="absolute inset-0 bg-purple-500/10 flex items-center justify-center z-10 animate-pulse">
+        <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center z-10 animate-pulse">
           <div className="text-4xl animate-spin">🔄</div>
         </div>
       )}
@@ -132,24 +132,24 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🧠</span>
-          <h2 className="text-xl font-semibold text-gray-800">Agent Memory</h2>
+          <h2 className="text-xl font-semibold text-white">Agent Memory</h2>
         </div>
-        <div className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold border-2 border-purple-300">
+        <div className="px-3 py-1 bg-purple-500/30 text-purple-200 rounded-full text-sm font-bold border-2 border-purple-400/50">
           {totalMemories} {totalMemories === 1 ? 'Language' : 'Languages'}
         </div>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border-2 border-red-200 rounded-xl mb-4">
-          <p className="text-red-700 text-sm">❌ {error}</p>
+        <div className="p-3 bg-red-500/20 border-2 border-red-400/50 rounded-xl mb-4">
+          <p className="text-red-200 text-sm">❌ {error}</p>
         </div>
       )}
 
       {!memoryData || totalMemories === 0 ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4 animate-bounce">💭</div>
-          <p className="text-gray-500 text-sm font-medium mb-2">No memories yet</p>
-          <p className="text-gray-400 text-xs">
+          <p className="text-white/80 text-sm font-medium mb-2">No memories yet</p>
+          <p className="text-white/60 text-xs">
             The agent will learn your preferences as you translate
           </p>
         </div>
@@ -157,27 +157,27 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
         <div className="space-y-6">
           {/* Feedback Stats */}
           {memoryData.feedbackStats && (memoryData.feedbackStats.totalPositive > 0 || memoryData.feedbackStats.totalNegative > 0) && (
-            <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200">
-              <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center gap-2">
+            <div className="p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border-2 border-purple-400/50">
+              <h3 className="text-sm font-bold text-purple-200 mb-3 flex items-center gap-2">
                 <span>📊</span> Feedback Summary
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-green-400">
                     {memoryData.feedbackStats.totalPositive}
                   </div>
-                  <div className="text-xs text-gray-600">Positive</div>
+                  <div className="text-xs text-white/70">Positive</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
+                  <div className="text-2xl font-bold text-red-400">
                     {memoryData.feedbackStats.totalNegative}
                   </div>
-                  <div className="text-xs text-gray-600">Negative</div>
+                  <div className="text-xs text-white/70">Negative</div>
                 </div>
               </div>
               {memoryData.feedbackStats.consecutiveNegative >= 2 && (
-                <div className="mt-3 p-2 bg-amber-100 border border-amber-300 rounded-lg">
-                  <p className="text-xs text-amber-800 font-medium">
+                <div className="mt-3 p-2 bg-amber-500/30 border border-amber-400/50 rounded-lg">
+                  <p className="text-xs text-amber-200 font-medium">
                     ⚠️ Adjusting preferences based on recent feedback
                   </p>
                 </div>
@@ -187,7 +187,7 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
 
           {/* Language Preferences */}
           <div>
-            <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white/80 mb-3 flex items-center gap-2">
               <span>🌍</span> Learned Preferences
             </h3>
             <div className="space-y-4">
@@ -196,14 +196,14 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
                 return (
                   <div
                     key={langPair}
-                    className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                    className="p-4 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-xl border-2 border-blue-400/50 hover:shadow-lg transition-all duration-300 hover:scale-105"
                   >
                     {/* Language Header */}
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-bold text-blue-900 text-sm">
+                      <h4 className="font-bold text-blue-200 text-sm">
                         {langPair.replace('English-', '')}
                       </h4>
-                      <div className="text-xs bg-white/70 px-2 py-1 rounded-full border border-blue-300">
+                      <div className="text-xs bg-white/20 px-2 py-1 rounded-full border border-blue-400/50 text-white/90">
                         {pref.interactionCount} interaction{pref.interactionCount !== 1 ? 's' : ''}
                       </div>
                     </div>
@@ -211,12 +211,16 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
                     {/* Confidence Meter */}
                     <div className="mb-3">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-600">Learning Confidence</span>
-                        <span className={`text-xs font-bold ${getConfidenceTextColor(confidence)}`}>
+                        <span className="text-xs font-medium text-white/70">Learning Confidence</span>
+                        <span className={`text-xs font-bold ${
+                          confidence >= 0.7 ? 'text-green-400' :
+                          confidence >= 0.5 ? 'text-yellow-400' :
+                          'text-red-400'
+                        }`}>
                           {Math.round(confidence * 100)}%
                         </span>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                         <div
                           className={`h-full bg-gradient-to-r ${getConfidenceColor(confidence)} transition-all duration-500`}
                           style={{ width: `${confidence * 100}%` }}
@@ -227,12 +231,12 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
                     {/* Formality Preference */}
                     <div className="mb-3">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-600">Formality</span>
-                        <span className="text-xs font-bold text-purple-600">
+                        <span className="text-xs font-medium text-white/70">Formality</span>
+                        <span className="text-xs font-bold text-purple-300">
                           {getFormalityLabel(pref.formality)}
                         </span>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-purple-400 to-purple-600 transition-all duration-500"
                           style={{ width: `${pref.formality * 100}%` }}
@@ -243,12 +247,12 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
                     {/* Directness Preference */}
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-600">Directness</span>
-                        <span className="text-xs font-bold text-indigo-600">
+                        <span className="text-xs font-medium text-white/70">Directness</span>
+                        <span className="text-xs font-bold text-indigo-300">
                           {getDirectnessLabel(pref.directness)}
                         </span>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-all duration-500"
                           style={{ width: `${pref.directness * 100}%` }}
@@ -257,7 +261,7 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
                     </div>
 
                     {/* Last Updated */}
-                    <div className="mt-3 text-xs text-gray-500">
+                    <div className="mt-3 text-xs text-white/50">
                       Updated: {new Date(pref.lastUpdated).toLocaleDateString()}
                     </div>
                   </div>
@@ -267,14 +271,14 @@ export default function MemoryDisplay({ userId = 'demo-user', refreshTrigger = 0
           </div>
 
           {/* Learning Status */}
-          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
+          <div className="p-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl border-2 border-green-400/50">
             <div className="flex items-start gap-3">
               <span className="text-2xl">✨</span>
               <div>
-                <p className="text-sm font-bold text-green-900 mb-1">
+                <p className="text-sm font-bold text-green-300 mb-1">
                   Agent is Learning!
                 </p>
-                <p className="text-xs text-green-700 leading-relaxed">
+                <p className="text-xs text-green-200 leading-relaxed">
                   Each translation helps me understand your preferences better. Keep providing feedback for improved accuracy.
                 </p>
               </div>

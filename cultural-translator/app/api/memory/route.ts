@@ -3,7 +3,9 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { UserMemory } from '@/lib/types';
 
 /**
- * GET endpoint - Retrieve user memory for a specific language
+ * GET endpoint - Retrieve user memory
+ * If language parameter is provided, returns specific language preferences
+ * If language is omitted, returns all language preferences
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,13 +18,6 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { success: false, error: 'Missing required parameter: userId' },
-        { status: 400 }
-      );
-    }
-
-    if (!language) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required parameter: language' },
         { status: 400 }
       );
     }
@@ -50,29 +45,42 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get language pair preferences (e.g., "*->Spanish")
-    const languagePair = `*->${language}`;
-    const preferences = userMemory.preferences[languagePair] || userMemory.preferences['*->*'];
+    // If language is specified, return only that language's preferences
+    if (language) {
+      const languagePair = `English-${language}`;
+      const preferences = userMemory.preferences[languagePair];
 
-    if (!preferences) {
+      if (!preferences) {
+        return NextResponse.json({
+          success: true,
+          memory: null,
+          message: 'No preferences found for this language pair'
+        });
+      }
+
+      // Return specific language memory data
       return NextResponse.json({
         success: true,
-        memory: null,
-        message: 'No preferences found for this language pair'
+        memory: {
+          userId: userMemory.userId,
+          preferences: {
+            formality: preferences.formality,
+            directness: preferences.directness,
+            interactionCount: preferences.interactionCount,
+            lastUpdated: preferences.lastUpdated
+          },
+          evolution: userMemory.evolution || []
+        }
       });
     }
 
-    // Return memory data
+    // If no language specified, return all preferences
     return NextResponse.json({
       success: true,
       memory: {
         userId: userMemory.userId,
-        preferences: {
-          formality: preferences.formality,
-          directness: preferences.directness,
-          interactionCount: preferences.interactionCount,
-          lastUpdated: preferences.lastUpdated
-        },
+        preferences: userMemory.preferences,
+        feedbackStats: userMemory.feedbackStats,
         evolution: userMemory.evolution || []
       }
     });

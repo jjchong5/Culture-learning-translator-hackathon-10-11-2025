@@ -577,7 +577,7 @@ export default function TranslationInterface({ initialText = '', initialLang = '
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 md:p-8 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 md:p-8 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
       <div className="max-w-7xl mx-auto">
         {/* Demo Mode Toggle */}
         <div className="fixed top-4 right-4 z-50">
@@ -595,31 +595,31 @@ export default function TranslationInterface({ initialText = '', initialLang = '
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-110 ${
               demoMode
                 ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                : 'bg-white/80 backdrop-blur-sm text-gray-700 border-2 border-gray-200 hover:border-purple-400'
+                : 'bg-white/10 backdrop-blur-sm text-white border-2 border-white/20 hover:border-purple-400'
             }`}
           >
             🎮 {demoMode ? 'Demo Mode ON' : 'Demo Mode'}
           </button>
-          <p className="text-xs text-gray-500 mt-1 text-center">Press D</p>
+          <p className="text-xs text-white/60 mt-1 text-center">Press D</p>
         </div>
 
         {/* Header */}
-        <div className="text-center mb-8 animate-fadeInDown">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-3">
+        <div className="text-center mb-12 animate-fadeInDown">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent mb-3">
             Cultural Translation Agent
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-purple-200 text-lg">
             AI-powered translation with cultural awareness and learning
           </p>
         </div>
 
         {/* 4-Panel Grid with Memory Sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
           {/* LEFT PANEL - Input Section */}
-          <div className="lg:col-span-3 animate-fadeInLeft" style={{ animationDelay: '100ms' }}>
-            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full transition-all duration-300 hover:shadow-2xl">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <div className="md:col-span-2 lg:col-span-1 animate-fadeInLeft" style={{ animationDelay: '100ms' }}>
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 h-full transition-all duration-300 hover:shadow-2xl hover:bg-white/15">
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <span className="text-2xl">💬</span> Input
               </h2>
 
@@ -631,13 +631,13 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                   placeholder="Enter text to translate..."
                   rows={6}
                   maxLength={maxChars}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/20 focus:shadow-lg transition-all duration-300 resize-none text-gray-800 placeholder-gray-400"
+                  className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 rounded-xl focus:border-purple-400 focus:ring-4 focus:ring-purple-400/20 focus:shadow-lg transition-all duration-300 resize-none text-white placeholder-white/50"
                 />
                 <div className="flex justify-between items-center mt-2">
                   <span className={`text-xs transition-colors ${
-                    charCount > maxChars * 0.9 ? 'text-red-500 font-medium' :
-                    charCount > maxChars * 0.8 ? 'text-amber-500 font-medium' :
-                    'text-gray-500'
+                    charCount > maxChars * 0.9 ? 'text-red-400 font-medium' :
+                    charCount > maxChars * 0.8 ? 'text-amber-400 font-medium' :
+                    'text-white/60'
                   }`}>
                     {charCount}/{maxChars} characters
                   </span>
@@ -659,16 +659,16 @@ export default function TranslationInterface({ initialText = '', initialLang = '
 
               {/* Language Dropdown */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-white/80 mb-2">
                   Target Language
                 </label>
                 <select
                   value={targetLang}
                   onChange={(e) => setTargetLang(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-white text-gray-800"
+                  className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 rounded-xl focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 transition-all text-white"
                 >
                   {LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
+                    <option key={lang.code} value={lang.code} className="bg-slate-800 text-white">
                       {lang.label}
                     </option>
                   ))}
@@ -732,8 +732,8 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                 disabled={loading || !inputText.trim()}
                 className={`w-full py-4 rounded-xl font-semibold text-white transition-all duration-300 ${
                   loading
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:shadow-primary/50 hover:scale-105 active:scale-95'
+                    ? 'bg-gray-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95'
                 }`}
               >
                 {loading ? (
@@ -753,7 +753,7 @@ export default function TranslationInterface({ initialText = '', initialLang = '
               {(translation || inputText) && (
                 <button
                   onClick={handleClear}
-                  className="w-full mt-3 py-2 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 hover:scale-105 active:scale-95 transition-all duration-200"
+                  className="w-full mt-3 py-2 rounded-xl font-medium text-white bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 transition-all duration-200 border border-white/20"
                 >
                   Clear
                 </button>
@@ -761,18 +761,18 @@ export default function TranslationInterface({ initialText = '', initialLang = '
 
               {/* Error Message */}
               {error && (
-                <div className={`mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl ${errorShake ? 'animate-shake' : ''}`}>
-                  <p className="text-red-700 text-sm">❌ {error}</p>
+                <div className={`mt-4 p-3 bg-red-500/20 border-2 border-red-400/50 rounded-xl ${errorShake ? 'animate-shake' : ''}`}>
+                  <p className="text-red-200 text-sm">❌ {error}</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* CENTER PANEL - Agent Reasoning */}
-          <div className="lg:col-span-3 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
-            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full transition-all duration-300 hover:shadow-2xl">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                <span className="text-2xl">🤖</span> Agent Thinking Process
+          <div className="md:col-span-1 lg:col-span-1 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 h-full transition-all duration-300 hover:shadow-2xl hover:bg-white/15">
+              <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                <span className="text-2xl">🤖</span> Agent Thinking
               </h2>
 
               {/* Reasoning Steps */}
@@ -781,19 +781,19 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                   /* Skeleton Loaders */
                   <>
                     {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="p-4 rounded-xl border-2 border-gray-200 bg-gray-50 animate-shimmer" style={{ animationDelay: `${i * 100}ms` }}>
+                      <div key={i} className="p-4 rounded-xl border-2 border-white/20 bg-white/5 animate-shimmer" style={{ animationDelay: `${i * 100}ms` }}>
                         <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 bg-gray-300 rounded animate-pulse"></div>
+                          <div className="w-8 h-8 bg-white/20 rounded animate-pulse"></div>
                           <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-gray-300 rounded w-3/4 animate-pulse"></div>
-                            <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+                            <div className="h-4 bg-white/20 rounded w-3/4 animate-pulse"></div>
+                            <div className="h-3 bg-white/10 rounded w-full animate-pulse"></div>
                           </div>
                         </div>
                       </div>
                     ))}
                   </>
                 ) : reasoningSteps.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400">
+                  <div className="text-center py-12 text-white/60">
                     <div className="text-6xl mb-4 animate-bounce">🧠</div>
                     <p>Agent reasoning will appear here...</p>
                   </div>
@@ -803,10 +803,10 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                       key={index}
                       className={`p-4 rounded-xl border-2 transition-all duration-500 ${
                         step.isComplete
-                          ? 'bg-green-50 border-green-300'
+                          ? 'bg-green-500/20 border-green-400/50'
                           : step.isActive
-                          ? 'bg-blue-50 border-blue-300 animate-pulse'
-                          : 'bg-gray-50 border-gray-200 opacity-50'
+                          ? 'bg-blue-500/20 border-blue-400/50 animate-pulse'
+                          : 'bg-white/5 border-white/20 opacity-50'
                       }`}
                       style={{
                         animation: step.isComplete || step.isActive ? 'fadeIn 0.5s ease-in' : 'none',
@@ -816,7 +816,7 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                         <span className="text-3xl">{step.icon}</span>
                         <div className="flex-1">
                           <h3 className={`font-bold mb-1 ${
-                            step.isComplete ? 'text-green-700' : step.isActive ? 'text-blue-700' : 'text-gray-500'
+                            step.isComplete ? 'text-green-300' : step.isActive ? 'text-blue-300' : 'text-white/50'
                           }`}>
                             {step.label}
                             {step.isActive && !step.isComplete && (
@@ -828,13 +828,13 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                             )}
                           </h3>
                           {step.text && (
-                            <p className="text-sm text-gray-600 leading-relaxed">
+                            <p className="text-sm text-white/80 leading-relaxed">
                               {step.text}
                             </p>
                           )}
                         </div>
                         {step.isComplete && (
-                          <span className="text-green-500 text-xl">✓</span>
+                          <span className="text-green-400 text-xl">✓</span>
                         )}
                       </div>
                     </div>
@@ -845,9 +845,9 @@ export default function TranslationInterface({ initialText = '', initialLang = '
           </div>
 
           {/* RIGHT PANEL - Output Section */}
-          <div className="lg:col-span-3 animate-fadeInRight" style={{ animationDelay: '300ms' }}>
-            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full transition-all duration-300 hover:shadow-2xl">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <div className="md:col-span-1 lg:col-span-1 animate-fadeInRight" style={{ animationDelay: '300ms' }}>
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 h-full transition-all duration-300 hover:shadow-2xl hover:bg-white/15">
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <span className="text-2xl">✨</span> Translation
               </h2>
 
@@ -875,8 +875,8 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                   )}
 
                   {/* Translated Text */}
-                  <div className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl border-2 border-primary/20">
-                    <p className="text-lg leading-relaxed text-gray-800 font-medium">
+                  <div className="p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border-2 border-purple-400/30">
+                    <p className="text-lg leading-relaxed text-white font-medium">
                       {translation}
                     </p>
                   </div>
@@ -884,21 +884,25 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                   {/* Confidence Meter */}
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-700">
+                      <span className="text-sm font-medium text-white/80">
                         Confidence
                       </span>
-                      <span className={`text-sm font-bold ${getConfidenceTextColor()} transition-all duration-300`}>
+                      <span className={`text-sm font-bold transition-all duration-300 ${
+                        confidence >= 0.85 ? 'text-green-400' :
+                        confidence >= 0.70 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>
                         {Math.round(animatedConfidence * 100)}%
                       </span>
                     </div>
-                    <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                    <div className="h-3 bg-white/20 rounded-full overflow-hidden shadow-inner">
                       <div
                         className={`h-full bg-gradient-to-r ${getConfidenceColor()} transition-all duration-100 ease-out shadow-lg`}
                         style={{ width: `${animatedConfidence * 100}%` }}
                       />
                     </div>
                     {confidence < 0.70 && (
-                      <p className="text-xs text-red-600 mt-2 flex items-center gap-1">
+                      <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
                         <span>⚠️</span>
                         Low confidence - agent is uncertain
                       </p>
@@ -908,15 +912,15 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                   {/* Memory Badge */}
                   <div className={`px-4 py-2 rounded-xl text-sm font-medium ${
                     memoryUsed
-                      ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                      : 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                      ? 'bg-purple-500/30 text-purple-200 border-2 border-purple-400/50'
+                      : 'bg-blue-500/30 text-blue-200 border-2 border-blue-400/50'
                   }`}>
                     {memoryUsed ? '🧠 Memory Used' : '🆕 No Memory Yet'}
                   </div>
 
                   {/* Feedback Buttons */}
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-3">
+                    <p className="text-sm font-medium text-white/80 mb-3">
                       Was this translation helpful?
                     </p>
                     <div className="flex gap-3">
@@ -925,8 +929,8 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                         disabled={feedbackGiven}
                         className={`flex-1 py-3 rounded-xl font-medium transition-all duration-300 relative overflow-hidden ${
                           feedbackGiven
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-green-50 text-green-700 border-2 border-green-300 hover:bg-green-100 hover:scale-110 hover:shadow-lg active:scale-95'
+                            ? 'bg-white/5 text-white/40 cursor-not-allowed'
+                            : 'bg-green-500/30 text-green-300 border-2 border-green-400/50 hover:bg-green-500/40 hover:scale-110 hover:shadow-lg active:scale-95'
                         } ${feedbackAnimation === 'positive' ? 'animate-feedbackPulse' : ''}`}
                       >
                         {feedbackAnimation === 'positive' ? (
@@ -940,8 +944,8 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                         disabled={feedbackGiven}
                         className={`flex-1 py-3 rounded-xl font-medium transition-all duration-300 relative overflow-hidden ${
                           feedbackGiven
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-red-50 text-red-700 border-2 border-red-300 hover:bg-red-100 hover:scale-110 hover:shadow-lg active:scale-95'
+                            ? 'bg-white/5 text-white/40 cursor-not-allowed'
+                            : 'bg-red-500/30 text-red-300 border-2 border-red-400/50 hover:bg-red-500/40 hover:scale-110 hover:shadow-lg active:scale-95'
                         } ${feedbackAnimation === 'negative' ? 'animate-feedbackPulse' : ''}`}
                       >
                         {feedbackAnimation === 'negative' ? (
@@ -952,14 +956,14 @@ export default function TranslationInterface({ initialText = '', initialLang = '
                       </button>
                     </div>
                     {feedbackGiven && (
-                      <p className="text-xs text-green-600 mt-2 text-center">
+                      <p className="text-xs text-green-400 mt-2 text-center">
                         ✓ Feedback submitted
                       </p>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-white/60">
                   <div className="text-6xl mb-4">🌍</div>
                   <p>Translation will appear here...</p>
                 </div>
@@ -968,7 +972,7 @@ export default function TranslationInterface({ initialText = '', initialLang = '
           </div>
 
           {/* FOURTH PANEL - Memory Display */}
-          <div className="lg:col-span-3 animate-fadeInRight" style={{ animationDelay: '400ms' }}>
+          <div className="md:col-span-2 lg:col-span-1 animate-fadeInRight" style={{ animationDelay: '400ms' }}>
             <MemoryDisplay userId="demo-user" refreshTrigger={memoryRefreshTrigger} />
           </div>
         </div>
@@ -1124,10 +1128,10 @@ export default function TranslationInterface({ initialText = '', initialLang = '
         .animate-shimmer {
           background: linear-gradient(
             90deg,
-            #f0f0f0 0%,
-            #e0e0e0 20%,
-            #f0f0f0 40%,
-            #f0f0f0 100%
+            rgba(255, 255, 255, 0.05) 0%,
+            rgba(255, 255, 255, 0.1) 20%,
+            rgba(255, 255, 255, 0.05) 40%,
+            rgba(255, 255, 255, 0.05) 100%
           );
           background-size: 1000px 100%;
           animation: shimmer 2s infinite linear;

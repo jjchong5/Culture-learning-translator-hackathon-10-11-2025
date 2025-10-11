@@ -7,6 +7,8 @@ import {
   UserMemory,
   AgentLog
 } from '@/lib/types';
+import { generateEmbedding, isEmbeddingServiceAvailable } from '@/lib/embeddings';
+import { getTranslationContext } from '@/lib/semantic-search';
 
 // Types for internal processing
 interface AnalysisResult {
@@ -100,6 +102,40 @@ async function analyzeText(text: string): Promise<{ analysis: AnalysisResult; re
 }
 
 /**
+ * STEP 1.5: SEMANTIC SEARCH - Find similar past translations (with graceful degradation)
+ */
+async function performSemanticSearch(
+  text: string,
+  userId: string,
+  targetLang: string
+): Promise<{ context: { hasSimilarExamples: boolean; averageSimilarity?: number; commonTone?: string; commonContext?: string }; reasoning: string }> {
+  try {
+    // Check if semantic search is available
+    if (!isEmbeddingServiceAvailable()) {
+      return {
+        context: { hasSimilarExamples: false },
+        reasoning: 'Semantic: Embedding service not configured - proceeding without context'
+      };
+    }
+
+    // Get translation context from similar examples
+    const context = await getTranslationContext(text, userId, targetLang);
+
+    return {
+      context,
+      reasoning: context.reasoning
+    };
+  } catch (error) {
+    console.error('Semantic search error (graceful degradation):', error);
+    // Graceful degradation - don't fail the request if semantic search fails
+    return {
+      context: { hasSimilarExamples: false },
+      reasoning: 'Semantic: Search unavailable - proceeding with standard analysis'
+    };
+  }
+}
+
+/**
  * STEP 2: RECALL MEMORY - Query user preferences from MongoDB (with graceful degradation)
  */
 async function recallMemory(
@@ -121,6 +157,8 @@ async function recallMemory(
 
     const userMemory = await Promise.race([queryPromise, timeoutPromise]);
 
+    console.log(`[Memory Debug] User: ${userId}, Language: ${targetLang}, Found: ${!!userMemory}`);
+
     if (!userMemory) {
       return {
         memory: {
@@ -133,9 +171,14 @@ async function recallMemory(
       };
     }
 
-    // Get language pair preferences (e.g., "en->es")
-    const languagePair = `*->${targetLang}`;
-    const preferences = userMemory.preferences[languagePair] || userMemory.preferences['*->*'];
+    // Get language pair preferences (e.g., "English-Spanish")
+    const languagePair = `English-${targetLang}`;
+    const preferences = userMemory.preferences[languagePair];
+
+    console.log(`[Memory Debug] Language Pair: ${languagePair}, Preferences Found: ${!!preferences}`);
+    if (preferences) {
+      console.log(`[Memory Debug] Formality: ${preferences.formality}, Directness: ${preferences.directness}, Count: ${preferences.interactionCount}`);
+    }
 
     if (!preferences) {
       return {
@@ -211,21 +254,36 @@ async function adaptAndTranslate(
   text: string,
   targetLang: string,
   analysis: AnalysisResult,
-  memory: MemoryResult
+  memory: MemoryResult,
+  semanticContext?: { hasSimilarExamples: boolean; averageSimilarity?: number; commonTone?: string; commonContext?: string; exampleCount?: number }
 ): Promise<{ translation: string; reasoning: string }> {
   try {
     if (!process.env.FIREWORKS_API_KEY) {
       throw new Error('FIREWORKS_API_KEY is not configured. Please add it to your .env.local file.');
     }
 
-    // Build adaptive prompt based on analysis and memory
+    // Build adaptive prompt based on analysis, memory, and semantic context
     const formalityLevel = memory.found
       ? memory.formality > 0.6 ? 'formal' : memory.formality < 0.4 ? 'casual' : 'balanced'
+      : semanticContext?.commonTone === 'formal' ? 'formal'
+      : semanticContext?.commonTone === 'casual' ? 'casual'
       : analysis.tone === 'formal' ? 'formal' : analysis.tone === 'casual' ? 'casual' : 'balanced';
 
     const directnessLevel = memory.found
       ? memory.directness > 0.6 ? 'direct' : memory.directness < 0.4 ? 'indirect' : 'moderate'
       : 'moderate';
+
+    // Build semantic context hint
+    let semanticHint = '';
+    if (semanticContext?.hasSimilarExamples) {
+      semanticHint = `\n- Similar past translations: ${semanticContext.exampleCount} found (${Math.round(semanticContext.averageSimilarity * 100)}% similarity)`;
+      if (semanticContext.commonTone) {
+        semanticHint += `\n- Past translations typically use ${semanticContext.commonTone} tone`;
+      }
+      if (semanticContext.commonContext) {
+        semanticHint += `\n- Past translations typically in ${semanticContext.commonContext} context`;
+      }
+    }
 
     const systemPrompt = `You are a culturally-aware translation agent. Translate the following text to ${targetLang} with these adaptations:
 
@@ -234,7 +292,7 @@ CULTURAL CONTEXT:
 - Context: ${analysis.context}
 - Sentiment: ${analysis.sentiment}
 - Target formality: ${formalityLevel}
-- Target directness: ${directnessLevel}
+- Target directness: ${directnessLevel}${semanticHint}
 
 INSTRUCTIONS:
 1. Translate accurately while preserving meaning
@@ -243,6 +301,7 @@ INSTRUCTIONS:
 4. Maintain the sentiment and intent
 5. If technical terms exist, keep them or provide ${targetLang} equivalents
 6. Ensure natural flow in ${targetLang}
+${semanticContext?.hasSimilarExamples ? '7. Consider similar past translations for consistency' : ''}
 
 Provide ONLY the translation, no explanations.`;
 
@@ -329,9 +388,13 @@ Provide ONLY the translation, no explanations.`;
 }
 
 /**
- * Calculate confidence score based on memory and analysis
+ * Calculate confidence score based on memory, analysis, and semantic context
  */
-function calculateConfidence(memory: MemoryResult, analysis: AnalysisResult): number {
+function calculateConfidence(
+  memory: MemoryResult,
+  analysis: AnalysisResult,
+  semanticContext?: { hasSimilarExamples: boolean; averageSimilarity?: number }
+): number {
   let confidence = 0.5; // Base confidence
 
   // Increase confidence if we have memory
@@ -341,6 +404,13 @@ function calculateConfidence(memory: MemoryResult, analysis: AnalysisResult): nu
     // Add confidence based on interaction count (max +0.3)
     const interactionBonus = Math.min(0.3, (memory.interactionCount / 5) * 0.1);
     confidence += interactionBonus;
+  }
+
+  // Increase confidence if we have similar past translations
+  if (semanticContext?.hasSimilarExamples) {
+    // Add confidence based on similarity score (max +0.2)
+    const similarityBonus = Math.min(0.2, semanticContext.averageSimilarity * 0.2);
+    confidence += similarityBonus;
   }
 
   // Decrease confidence if idioms detected
@@ -369,9 +439,20 @@ async function saveToDatabase(
     const db = await connectToDatabase();
     const timestamp = new Date();
 
+    // Generate embedding for original text (with graceful degradation)
+    let embedding: number[] | undefined;
+    try {
+      if (isEmbeddingServiceAvailable()) {
+        embedding = await generateEmbedding(originalText);
+      }
+    } catch (embeddingError) {
+      console.error('Embedding generation failed (non-critical):', embeddingError);
+      // Continue without embedding - semantic search won't be available for this entry
+    }
+
     // Save to messages collection
     const messagesCollection = db.collection('messages');
-    const messageResult = await messagesCollection.insertOne({
+    const messageDocument: Record<string, unknown> = {
       userId,
       timestamp,
       originalText,
@@ -380,7 +461,14 @@ async function saveToDatabase(
       reasoning,
       confidence,
       analysis,
-    });
+    };
+
+    // Add embedding if available
+    if (embedding) {
+      messageDocument.embedding = embedding;
+    }
+
+    const messageResult = await messagesCollection.insertOne(messageDocument);
 
     // Save to agent_logs collection
     const agentLog: AgentLog = {
@@ -423,7 +511,7 @@ async function updateUserMemory(
 ): Promise<void> {
   try {
     const userMemoryCollection = db.collection<UserMemory>('user_memory');
-    const languagePair = `*->${targetLang}`;
+    const languagePair = `English-${targetLang}`;
     const timestamp = new Date();
 
     // Convert analysis to numeric values
@@ -451,11 +539,16 @@ async function updateUserMemory(
         ],
       };
 
+      console.log(`[Memory Update] Created new memory for user: ${userId}, language: ${targetLang}`);
       await userMemoryCollection.insertOne(newMemory);
     } else {
       // Update existing memory with weighted average (90% old, 10% new)
       const newFormality = memory.formality * 0.9 + detectedFormality * 0.1;
       const newDirectness = memory.directness * 0.9 + detectedDirectness * 0.1;
+
+      console.log(`[Memory Update] Updating memory for user: ${userId}, language: ${targetLang}`);
+      console.log(`[Memory Update] Old: F=${memory.formality}, D=${memory.directness}`);
+      console.log(`[Memory Update] New: F=${newFormality}, D=${newDirectness}`);
 
       await userMemoryCollection.updateOne(
         { userId },
@@ -556,6 +649,14 @@ export async function POST(request: NextRequest) {
     const { analysis, reasoning: analysisReasoning } = await analyzeText(text);
     reasoning.push(analysisReasoning);
 
+    // STEP 1.5: SEMANTIC SEARCH (find similar past translations)
+    const { context: semanticContext, reasoning: semanticReasoning } = await performSemanticSearch(
+      text,
+      userId,
+      targetLang
+    );
+    reasoning.push(semanticReasoning);
+
     // STEP 2: RECALL MEMORY
     const { memory, reasoning: memoryReasoning } = await recallMemory(userId, targetLang);
     reasoning.push(memoryReasoning);
@@ -565,12 +666,13 @@ export async function POST(request: NextRequest) {
       text,
       targetLang,
       analysis,
-      memory
+      memory,
+      semanticContext
     );
     reasoning.push(translationReasoning);
 
-    // Calculate confidence
-    const confidence = calculateConfidence(memory, analysis);
+    // Calculate confidence (including semantic search results)
+    const confidence = calculateConfidence(memory, analysis, semanticContext);
 
     // Save to database and get messageId for feedback
     let messageId: string | undefined;

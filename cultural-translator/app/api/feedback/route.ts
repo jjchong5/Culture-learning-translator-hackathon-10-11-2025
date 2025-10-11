@@ -90,7 +90,7 @@ async function handlePositiveFeedback(
     }
 
     const targetLang = message.targetLang;
-    const languagePair = `*->${targetLang}`;
+    const languagePair = `English-${targetLang}`;
 
     // Get current user memory
     const userMemoryCollection = db.collection<UserMemory>('user_memory');
@@ -201,7 +201,7 @@ async function handleNegativeFeedback(
     }
 
     const targetLang = message.targetLang;
-    const languagePair = `*->${targetLang}`;
+    const languagePair = `English-${targetLang}`;
 
     // Get current user memory
     const userMemoryCollection = db.collection<UserMemory>('user_memory');
