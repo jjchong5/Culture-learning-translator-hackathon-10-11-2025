@@ -59,6 +59,7 @@ export interface TranslationResponse {
   reasoning: string[];
   confidence: number;
   memoryUsed: boolean;
+  messageId?: string;
 }
 
 // Agent Log Interface

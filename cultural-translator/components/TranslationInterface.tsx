@@ -1,7 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TranslationResponse } from '@/lib/types';
+import MemoryDisplay from './MemoryDisplay';
+
+interface TranslationInterfaceProps {
+  initialText?: string;
+  initialLang?: string;
+  scenarioTrigger?: number;
+}
 
 // Language options
 const LANGUAGES = [
@@ -35,10 +42,11 @@ interface MemorySuggestion {
   language: string;
 }
 
-export default function TranslationInterface() {
+export default function TranslationInterface({ initialText = '', initialLang = '', scenarioTrigger = 0 }: TranslationInterfaceProps) {
   // State management
   const [inputText, setInputText] = useState('');
   const [targetLang, setTargetLang] = useState('Spanish');
+  const [memoryRefreshTrigger, setMemoryRefreshTrigger] = useState(0);
   const [translation, setTranslation] = useState('');
   const [confidence, setConfidence] = useState(0);
   const [memoryUsed, setMemoryUsed] = useState(false);
@@ -59,9 +67,151 @@ export default function TranslationInterface() {
   const [lowConfidenceReason, setLowConfidenceReason] = useState('');
   const [suggestedPreferences, setSuggestedPreferences] = useState<{ formality: number; context: string } | null>(null);
 
+  // Animation states
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [feedbackAnimation, setFeedbackAnimation] = useState<'positive' | 'negative' | null>(null);
+  const [animatedConfidence, setAnimatedConfidence] = useState(0);
+  const [demoMode, setDemoMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [errorShake, setErrorShake] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   // Character count
   const charCount = inputText.length;
-  const maxChars = 1000;
+  const maxChars = 500; // Match API validation
+  const minChars = 2;
+
+  // Mount animation
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Handle scenario selection from parent
+  useEffect(() => {
+    if (scenarioTrigger > 0 && initialText) {
+      setInputText(initialText);
+      if (initialLang) {
+        setTargetLang(initialLang);
+      }
+      showToastMessage('🎬 Demo scenario loaded! Click Translate to see the agent in action.');
+    }
+  }, [scenarioTrigger]);
+
+  // Demo mode keyboard shortcut
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'D' || e.key === 'd') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          const activeEl = document.activeElement;
+          if (activeEl?.tagName !== 'INPUT' && activeEl?.tagName !== 'TEXTAREA') {
+            setDemoMode(prev => !prev);
+            if (!demoMode) {
+              setInputText('I need to schedule a professional meeting with our international clients to discuss the quarterly business report and upcoming proposals.');
+              showToastMessage('🎮 Demo Mode Activated! Press D again to toggle.');
+            } else {
+              setInputText('');
+              showToastMessage('Demo Mode Deactivated');
+            }
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [demoMode]);
+
+  // Animate confidence meter
+  useEffect(() => {
+    if (confidence > 0) {
+      const duration = 1000;
+      const steps = 60;
+      const increment = confidence / steps;
+      let current = 0;
+      let step = 0;
+
+      const timer = setInterval(() => {
+        step++;
+        // Ease-out spring effect
+        const progress = step / steps;
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        current = confidence * easeOut;
+
+        setAnimatedConfidence(current);
+
+        if (step >= steps) {
+          clearInterval(timer);
+          setAnimatedConfidence(confidence);
+        }
+      }, duration / steps);
+
+      return () => clearInterval(timer);
+    }
+  }, [confidence]);
+
+  // Confetti animation
+  useEffect(() => {
+    if (showConfetti && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles: Array<{
+        x: number;
+        y: number;
+        vx: number;
+        vy: number;
+        color: string;
+        size: number;
+      }> = [];
+
+      for (let i = 0; i < 50; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 10,
+          vy: (Math.random() - 0.5) * 10 - 5,
+          color: ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'][Math.floor(Math.random() * 5)],
+          size: Math.random() * 6 + 2,
+        });
+      }
+
+      let animationId: number;
+      const animate = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach((p, index) => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.3; // gravity
+
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+
+          if (p.y > canvas.height) {
+            particles.splice(index, 1);
+          }
+        });
+
+        if (particles.length > 0) {
+          animationId = requestAnimationFrame(animate);
+        }
+      };
+
+      animate();
+
+      setTimeout(() => {
+        setShowConfetti(false);
+        if (animationId) cancelAnimationFrame(animationId);
+      }, 3000);
+
+      return () => {
+        if (animationId) cancelAnimationFrame(animationId);
+      };
+    }
+  }, [showConfetti]);
 
   // Initialize reasoning steps
   const initReasoningSteps = (): ReasoningStep[] => [
@@ -183,14 +333,32 @@ export default function TranslationInterface() {
 
   // Handle translation
   const handleTranslate = async () => {
+    // Client-side validation
     if (!inputText.trim()) {
-      setError('Please enter text to translate');
+      setError('Please enter some text to translate');
+      setErrorShake(true);
+      setTimeout(() => setErrorShake(false), 600);
+      return;
+    }
+
+    if (inputText.trim().length < minChars) {
+      setError(`Text must be at least ${minChars} characters long`);
+      setErrorShake(true);
+      setTimeout(() => setErrorShake(false), 600);
       return;
     }
 
     if (charCount > maxChars) {
-      setError(`Text exceeds maximum length of ${maxChars} characters`);
+      setError(`Text exceeds maximum length of ${maxChars} characters. Please shorten your text.`);
+      setErrorShake(true);
+      setTimeout(() => setErrorShake(false), 600);
       return;
+    }
+
+    // Check for special characters overload (potential issue)
+    const specialCharRatio = (inputText.match(/[^a-zA-Z0-9\s]/g) || []).length / inputText.length;
+    if (specialCharRatio > 0.5) {
+      showToastMessage('⚠️ Text contains many special characters - translation may vary');
     }
 
     // Reset state
@@ -201,6 +369,13 @@ export default function TranslationInterface() {
     setFeedbackGiven(false);
     setMessageId('');
     setShowLowConfidenceWarning(false);
+
+    // Show "thinking deeply" message if request takes too long
+    const slowRequestTimer = setTimeout(() => {
+      if (loading) {
+        showToastMessage('🤔 Agent is thinking deeply about this...');
+      }
+    }, 5000);
 
     try {
       // Call agent-translate API with suggested preferences if available
@@ -238,6 +413,34 @@ export default function TranslationInterface() {
       setTranslation(data.translation);
       setConfidence(data.confidence);
       setMemoryUsed(data.memoryUsed);
+      setMessageId(data.messageId || '');
+
+      // Trigger memory refresh to show updated data
+      setMemoryRefreshTrigger(prev => prev + 1);
+
+      // Show confetti on successful translation with good confidence
+      if (data.confidence >= 0.7) {
+        setTimeout(() => setShowConfetti(true), 600);
+      }
+
+      // Show helpful feedback messages based on context
+      if (!data.memoryUsed) {
+        showToastMessage('🆕 This is my first time with you - I&apos;ll learn your preferences!');
+      } else {
+        // Check if this is around the 3rd translation (check reasoning for interaction count)
+        const memoryReasoning = data.reasoning.find((r: string) => r.includes('interactions'));
+        if (memoryReasoning) {
+          const interactionMatch = memoryReasoning.match(/(\d+) interactions/);
+          if (interactionMatch) {
+            const count = parseInt(interactionMatch[1]);
+            if (count === 3) {
+              showToastMessage('🧠 I&apos;m starting to understand your style!');
+            } else if (count >= 5 && count % 5 === 0) {
+              showToastMessage(`🎯 ${count} translations together - I know your style well!`);
+            }
+          }
+        }
+      }
 
       // Check for low confidence and show warning
       if (data.confidence < 0.60) {
@@ -266,7 +469,10 @@ export default function TranslationInterface() {
     } catch (err) {
       console.error('Translation error:', err);
       setError(err instanceof Error ? err.message : 'Translation failed');
+      setErrorShake(true);
+      setTimeout(() => setErrorShake(false), 600);
     } finally {
+      clearTimeout(slowRequestTimer);
       setLoading(false);
     }
   };
@@ -297,6 +503,10 @@ export default function TranslationInterface() {
   const handleFeedback = async (feedbackType: 'positive' | 'negative', reason?: string) => {
     if (!messageId || feedbackGiven) return;
 
+    // Trigger animation
+    setFeedbackAnimation(feedbackType);
+    setTimeout(() => setFeedbackAnimation(null), 800);
+
     try {
       const response = await fetch('/api/feedback', {
         method: 'POST',
@@ -315,6 +525,10 @@ export default function TranslationInterface() {
 
       if (data.success) {
         setFeedbackGiven(true);
+
+        // Trigger memory refresh to show updated preferences
+        setMemoryRefreshTrigger(prev => prev + 1);
+
         showToastMessage(
           feedbackType === 'positive'
             ? '✅ Thanks! Your feedback helps improve translations.'
@@ -363,10 +577,34 @@ export default function TranslationInterface() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 md:p-8">
+    <div className={`min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 md:p-8 transition-opacity duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
       <div className="max-w-7xl mx-auto">
+        {/* Demo Mode Toggle */}
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={() => {
+              setDemoMode(!demoMode);
+              if (!demoMode) {
+                setInputText('I need to schedule a professional meeting with our international clients to discuss the quarterly business report and upcoming proposals.');
+                showToastMessage('🎮 Demo Mode Activated!');
+              } else {
+                setInputText('');
+                showToastMessage('Demo Mode Deactivated');
+              }
+            }}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-110 ${
+              demoMode
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                : 'bg-white/80 backdrop-blur-sm text-gray-700 border-2 border-gray-200 hover:border-purple-400'
+            }`}
+          >
+            🎮 {demoMode ? 'Demo Mode ON' : 'Demo Mode'}
+          </button>
+          <p className="text-xs text-gray-500 mt-1 text-center">Press D</p>
+        </div>
+
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 animate-fadeInDown">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-3">
             Cultural Translation Agent
           </h1>
@@ -375,12 +613,12 @@ export default function TranslationInterface() {
           </p>
         </div>
 
-        {/* 3-Panel Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+        {/* 4-Panel Grid with Memory Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
           {/* LEFT PANEL - Input Section */}
-          <div className="lg:col-span-3">
-            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full">
+          <div className="lg:col-span-3 animate-fadeInLeft" style={{ animationDelay: '100ms' }}>
+            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full transition-all duration-300 hover:shadow-2xl">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <span className="text-2xl">💬</span> Input
               </h2>
@@ -393,17 +631,29 @@ export default function TranslationInterface() {
                   placeholder="Enter text to translate..."
                   rows={6}
                   maxLength={maxChars}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none text-gray-800 placeholder-gray-400"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary focus:ring-4 focus:ring-primary/20 focus:shadow-lg transition-all duration-300 resize-none text-gray-800 placeholder-gray-400"
                 />
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-gray-500">
+                  <span className={`text-xs transition-colors ${
+                    charCount > maxChars * 0.9 ? 'text-red-500 font-medium' :
+                    charCount > maxChars * 0.8 ? 'text-amber-500 font-medium' :
+                    'text-gray-500'
+                  }`}>
                     {charCount}/{maxChars} characters
                   </span>
-                  {charCount > maxChars * 0.9 && (
+                  {charCount > maxChars ? (
+                    <span className="text-xs text-red-600 font-bold animate-pulse">
+                      ❌ Too long!
+                    </span>
+                  ) : charCount > maxChars * 0.9 ? (
                     <span className="text-xs text-red-500 font-medium">
                       ⚠️ Near limit
                     </span>
-                  )}
+                  ) : charCount > maxChars * 0.8 ? (
+                    <span className="text-xs text-amber-500 font-medium">
+                      ⚡ Getting long
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
@@ -480,15 +730,18 @@ export default function TranslationInterface() {
               <button
                 onClick={handleTranslate}
                 disabled={loading || !inputText.trim()}
-                className={`w-full py-4 rounded-xl font-semibold text-white transition-all ${
+                className={`w-full py-4 rounded-xl font-semibold text-white transition-all duration-300 ${
                   loading
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:scale-105 active:scale-95'
+                    : 'bg-gradient-to-r from-primary to-secondary hover:shadow-lg hover:shadow-primary/50 hover:scale-105 active:scale-95'
                 }`}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="animate-spin">⚡</span>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                     Translating...
                   </span>
                 ) : (
@@ -500,7 +753,7 @@ export default function TranslationInterface() {
               {(translation || inputText) && (
                 <button
                   onClick={handleClear}
-                  className="w-full mt-3 py-2 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all"
+                  className="w-full mt-3 py-2 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 hover:scale-105 active:scale-95 transition-all duration-200"
                 >
                   Clear
                 </button>
@@ -508,7 +761,7 @@ export default function TranslationInterface() {
 
               {/* Error Message */}
               {error && (
-                <div className="mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl">
+                <div className={`mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl ${errorShake ? 'animate-shake' : ''}`}>
                   <p className="text-red-700 text-sm">❌ {error}</p>
                 </div>
               )}
@@ -516,17 +769,32 @@ export default function TranslationInterface() {
           </div>
 
           {/* CENTER PANEL - Agent Reasoning */}
-          <div className="lg:col-span-4">
-            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full">
+          <div className="lg:col-span-3 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full transition-all duration-300 hover:shadow-2xl">
               <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
                 <span className="text-2xl">🤖</span> Agent Thinking Process
               </h2>
 
               {/* Reasoning Steps */}
               <div className="space-y-4">
-                {reasoningSteps.length === 0 ? (
+                {loading && reasoningSteps.length === 0 ? (
+                  /* Skeleton Loaders */
+                  <>
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="p-4 rounded-xl border-2 border-gray-200 bg-gray-50 animate-shimmer" style={{ animationDelay: `${i * 100}ms` }}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-gray-300 rounded animate-pulse"></div>
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-gray-300 rounded w-3/4 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : reasoningSteps.length === 0 ? (
                   <div className="text-center py-12 text-gray-400">
-                    <div className="text-6xl mb-4">🧠</div>
+                    <div className="text-6xl mb-4 animate-bounce">🧠</div>
                     <p>Agent reasoning will appear here...</p>
                   </div>
                 ) : (
@@ -577,8 +845,8 @@ export default function TranslationInterface() {
           </div>
 
           {/* RIGHT PANEL - Output Section */}
-          <div className="lg:col-span-3">
-            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full">
+          <div className="lg:col-span-3 animate-fadeInRight" style={{ animationDelay: '300ms' }}>
+            <div className="bg-white/70 backdrop-blur-lg rounded-2xl shadow-xl border border-white/50 p-6 h-full transition-all duration-300 hover:shadow-2xl">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <span className="text-2xl">✨</span> Translation
               </h2>
@@ -619,14 +887,14 @@ export default function TranslationInterface() {
                       <span className="text-sm font-medium text-gray-700">
                         Confidence
                       </span>
-                      <span className={`text-sm font-bold ${getConfidenceTextColor()}`}>
-                        {Math.round(confidence * 100)}%
+                      <span className={`text-sm font-bold ${getConfidenceTextColor()} transition-all duration-300`}>
+                        {Math.round(animatedConfidence * 100)}%
                       </span>
                     </div>
-                    <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
                       <div
-                        className={`h-full bg-gradient-to-r ${getConfidenceColor()} transition-all duration-1000 ease-out`}
-                        style={{ width: `${confidence * 100}%` }}
+                        className={`h-full bg-gradient-to-r ${getConfidenceColor()} transition-all duration-100 ease-out shadow-lg`}
+                        style={{ width: `${animatedConfidence * 100}%` }}
                       />
                     </div>
                     {confidence < 0.70 && (
@@ -655,24 +923,32 @@ export default function TranslationInterface() {
                       <button
                         onClick={() => handleFeedback('positive')}
                         disabled={feedbackGiven}
-                        className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                        className={`flex-1 py-3 rounded-xl font-medium transition-all duration-300 relative overflow-hidden ${
                           feedbackGiven
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-green-50 text-green-700 border-2 border-green-300 hover:bg-green-100 hover:scale-105 active:scale-95'
-                        }`}
+                            : 'bg-green-50 text-green-700 border-2 border-green-300 hover:bg-green-100 hover:scale-110 hover:shadow-lg active:scale-95'
+                        } ${feedbackAnimation === 'positive' ? 'animate-feedbackPulse' : ''}`}
                       >
-                        👍 Good
+                        {feedbackAnimation === 'positive' ? (
+                          <span className="text-3xl">✓</span>
+                        ) : (
+                          '👍 Good'
+                        )}
                       </button>
                       <button
                         onClick={() => handleFeedback('negative', 'Translation needs improvement')}
                         disabled={feedbackGiven}
-                        className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                        className={`flex-1 py-3 rounded-xl font-medium transition-all duration-300 relative overflow-hidden ${
                           feedbackGiven
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-red-50 text-red-700 border-2 border-red-300 hover:bg-red-100 hover:scale-105 active:scale-95'
-                        }`}
+                            : 'bg-red-50 text-red-700 border-2 border-red-300 hover:bg-red-100 hover:scale-110 hover:shadow-lg active:scale-95'
+                        } ${feedbackAnimation === 'negative' ? 'animate-feedbackPulse' : ''}`}
                       >
-                        👎 Needs Work
+                        {feedbackAnimation === 'negative' ? (
+                          <span className="text-3xl">✗</span>
+                        ) : (
+                          '👎 Needs Work'
+                        )}
                       </button>
                     </div>
                     {feedbackGiven && (
@@ -690,8 +966,22 @@ export default function TranslationInterface() {
               )}
             </div>
           </div>
+
+          {/* FOURTH PANEL - Memory Display */}
+          <div className="lg:col-span-3 animate-fadeInRight" style={{ animationDelay: '400ms' }}>
+            <MemoryDisplay userId="demo-user" refreshTrigger={memoryRefreshTrigger} />
+          </div>
         </div>
       </div>
+
+      {/* Confetti Canvas */}
+      {showConfetti && (
+        <canvas
+          ref={canvasRef}
+          className="fixed inset-0 pointer-events-none z-40"
+          style={{ width: '100%', height: '100%' }}
+        />
+      )}
 
       {/* Toast Notification */}
       {showToast && (
@@ -706,6 +996,46 @@ export default function TranslationInterface() {
           from {
             opacity: 0;
             transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeInDown {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes fadeInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
           }
           to {
             opacity: 1;
@@ -734,6 +1064,36 @@ export default function TranslationInterface() {
             max-height: 300px;
           }
         }
+        @keyframes shimmer {
+          0% {
+            background-position: -1000px 0;
+          }
+          100% {
+            background-position: 1000px 0;
+          }
+        }
+        @keyframes shake {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          10%, 30%, 50%, 70%, 90% {
+            transform: translateX(-10px);
+          }
+          20%, 40%, 60%, 80% {
+            transform: translateX(10px);
+          }
+        }
+        @keyframes feedbackPulse {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(2);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
         .animation-delay-200 {
           animation-delay: 0.2s;
         }
@@ -745,6 +1105,51 @@ export default function TranslationInterface() {
         }
         .animate-slideDown {
           animation: slideDown 0.4s ease-out;
+        }
+        .animate-fadeInDown {
+          animation: fadeInDown 0.6s ease-out;
+        }
+        .animate-fadeInLeft {
+          animation: fadeInLeft 0.6s ease-out;
+          animation-fill-mode: both;
+        }
+        .animate-fadeInRight {
+          animation: fadeInRight 0.6s ease-out;
+          animation-fill-mode: both;
+        }
+        .animate-fadeInUp {
+          animation: fadeInUp 0.6s ease-out;
+          animation-fill-mode: both;
+        }
+        .animate-shimmer {
+          background: linear-gradient(
+            90deg,
+            #f0f0f0 0%,
+            #e0e0e0 20%,
+            #f0f0f0 40%,
+            #f0f0f0 100%
+          );
+          background-size: 1000px 100%;
+          animation: shimmer 2s infinite linear;
+        }
+        .animate-shake {
+          animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        .animate-feedbackPulse {
+          animation: feedbackPulse 0.6s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+          .animate-fadeInLeft,
+          .animate-fadeInRight,
+          .animate-fadeInUp,
+          .animate-fadeInDown {
+            animation-duration: 0.42s;
+          }
+          .animate-shimmer {
+            animation-duration: 1.4s;
+          }
         }
       `}</style>
     </div>

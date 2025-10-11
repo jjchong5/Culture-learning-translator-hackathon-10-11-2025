@@ -72,7 +72,7 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/dashboard?userId=demo');
+      const response = await fetch('/api/dashboard?userId=demo-user');
       const result = await response.json();
 
       if (result.success) {

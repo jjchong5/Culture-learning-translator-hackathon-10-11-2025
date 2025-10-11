@@ -96,21 +96,24 @@ async function handlePositiveFeedback(
     const userMemoryCollection = db.collection<UserMemory>('user_memory');
     const userMemory = await userMemoryCollection.findOne({ userId });
 
-    if (!userMemory) {
-      throw new Error('User memory not found');
-    }
+    // Get preferences or use defaults from message analysis
+    let currentFormality = 0.5;
+    let currentDirectness = 0.5;
 
-    const currentPrefs = userMemory.preferences[languagePair];
-
-    if (!currentPrefs) {
-      throw new Error('Language pair preferences not found');
+    if (userMemory?.preferences[languagePair]) {
+      currentFormality = userMemory.preferences[languagePair].formality;
+      currentDirectness = userMemory.preferences[languagePair].directness;
+    } else if (message.analysis) {
+      // Use analysis from the message to infer preferences
+      currentFormality = message.analysis.tone === 'formal' ? 0.8 : message.analysis.tone === 'casual' ? 0.2 : 0.5;
+      currentDirectness = message.analysis.context === 'business' ? 0.7 : 0.5;
     }
 
     // Reinforce current preferences (move slightly toward current values)
-    const reinforcedFormality = clamp(currentPrefs.formality + 0.05);
-    const reinforcedDirectness = clamp(currentPrefs.directness + 0.05);
+    const reinforcedFormality = clamp(currentFormality + 0.05);
+    const reinforcedDirectness = clamp(currentDirectness + 0.05);
 
-    // Update user memory
+    // Update user memory (create if doesn't exist)
     await userMemoryCollection.updateOne(
       { userId },
       {
@@ -130,8 +133,13 @@ async function handlePositiveFeedback(
         },
         $inc: {
           'feedbackStats.totalPositive': 1,
+          [`preferences.${languagePair}.interactionCount`]: 1,
         },
-      }
+        $setOnInsert: {
+          userId,
+        },
+      },
+      { upsert: true }
     );
 
     // Update agent_logs with feedback
@@ -199,14 +207,17 @@ async function handleNegativeFeedback(
     const userMemoryCollection = db.collection<UserMemory>('user_memory');
     const userMemory = await userMemoryCollection.findOne({ userId });
 
-    if (!userMemory) {
-      throw new Error('User memory not found');
-    }
+    // Get preferences or use defaults from message analysis
+    let currentFormality = 0.5;
+    let currentDirectness = 0.5;
 
-    const currentPrefs = userMemory.preferences[languagePair];
-
-    if (!currentPrefs) {
-      throw new Error('Language pair preferences not found');
+    if (userMemory?.preferences[languagePair]) {
+      currentFormality = userMemory.preferences[languagePair].formality;
+      currentDirectness = userMemory.preferences[languagePair].directness;
+    } else if (message.analysis) {
+      // Use analysis from the message to infer preferences
+      currentFormality = message.analysis.tone === 'formal' ? 0.8 : message.analysis.tone === 'casual' ? 0.2 : 0.5;
+      currentDirectness = message.analysis.context === 'business' ? 0.7 : 0.5;
     }
 
     // Determine adjustment based on reason (if provided)
@@ -224,7 +235,7 @@ async function handleNegativeFeedback(
     }
 
     // Get current feedback stats
-    const feedbackStats = userMemory.feedbackStats;
+    const feedbackStats = userMemory?.feedbackStats;
     const consecutiveNegative = (feedbackStats?.consecutiveNegative || 0) + 1;
     const totalNegative = (feedbackStats?.totalNegative || 0) + 1;
 
@@ -238,11 +249,11 @@ async function handleNegativeFeedback(
       newDirectness = 0.5;
     } else {
       // Apply adjustments
-      newFormality = clamp(currentPrefs.formality + adjustFormality);
-      newDirectness = clamp(currentPrefs.directness + adjustDirectness);
+      newFormality = clamp(currentFormality + adjustFormality);
+      newDirectness = clamp(currentDirectness + adjustDirectness);
     }
 
-    // Update user memory
+    // Update user memory (create if doesn't exist)
     await userMemoryCollection.updateOne(
       { userId },
       {
@@ -260,6 +271,12 @@ async function handleNegativeFeedback(
             formality: newFormality,
             directness: newDirectness,
           },
+        },
+        $inc: {
+          [`preferences.${languagePair}.interactionCount`]: 1,
+        },
+        $setOnInsert: {
+          userId,
         },
       },
       { upsert: true }

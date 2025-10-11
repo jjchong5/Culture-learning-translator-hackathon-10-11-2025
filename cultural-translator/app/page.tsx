@@ -1,47 +1,88 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import TranslationInterface from '@/components/TranslationInterface';
-
-export const metadata: Metadata = {
-  title: 'Cultural Translator - Agentic AI',
-  description: 'An AI agent that learns and adapts to your cultural communication preferences',
-};
+import DemoScenarios from '@/components/DemoScenarios';
 
 export default function Home() {
+  const [scenarioText, setScenarioText] = useState<string>('');
+  const [scenarioLang, setScenarioLang] = useState<string>('');
+  const [scenarioTrigger, setScenarioTrigger] = useState<number>(0);
+
+  const handleScenarioSelect = (text: string, targetLang: string) => {
+    setScenarioText(text);
+    setScenarioLang(targetLang);
+    setScenarioTrigger(prev => prev + 1);
+
+    // Scroll to translation interface
+    setTimeout(() => {
+      const translationSection = document.getElementById('translation-interface');
+      if (translationSection) {
+        translationSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
       <header className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl sm:text-6xl font-bold mb-4 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          <h1 className="text-5xl sm:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent">
             Cultural Translator
           </h1>
-          <p className="text-xl sm:text-2xl text-gray-700 mb-6">
+          <p className="text-xl sm:text-2xl text-purple-200 mb-6">
             AI Agent That Learns Your Communication Style
           </p>
+
+          {/* Feature Badges */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+            <span className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium shadow-md border border-white/20">
+              🧠 Agentic Reasoning
+            </span>
+            <span className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium shadow-md border border-white/20">
+              📚 Memory & Learning
+            </span>
+            <span className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-full text-sm font-medium shadow-md border border-white/20">
+              🌍 Cultural Adaptation
+            </span>
+          </div>
+
           <Link
             href="/dashboard"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-primary to-secondary text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            className="inline-block px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:bg-white/20 transition-all duration-300 hover:scale-105 border border-white/20"
           >
             Go to Dashboard →
           </Link>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 pb-12">
+      {/* Demo Scenarios Section */}
+      <section className="px-4 sm:px-6 lg:px-8 pb-12">
         <div className="max-w-7xl mx-auto">
-          <TranslationInterface />
+          <DemoScenarios onScenarioSelect={handleScenarioSelect} />
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <main id="translation-interface" className="flex-1 px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="max-w-7xl mx-auto">
+          <TranslationInterface
+            initialText={scenarioText}
+            initialLang={scenarioLang}
+            scenarioTrigger={scenarioTrigger}
+          />
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="py-8 px-4 sm:px-6 lg:px-8 bg-white/50 backdrop-blur-sm border-t border-gray-200">
+      <footer className="py-8 px-4 sm:px-6 lg:px-8 bg-white/5 backdrop-blur-sm border-t border-white/10">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Tech Stack Badges */}
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <span className="px-4 py-2 bg-black text-white rounded-full text-sm font-medium shadow-md">
+              <span className="px-4 py-2 bg-white/10 text-white rounded-full text-sm font-medium shadow-md border border-white/20">
                 Next.js 14
               </span>
               <span className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full text-sm font-medium shadow-md">
@@ -58,7 +99,7 @@ export default function Home() {
                 href="https://github.com/yourusername/cultural-translator"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors duration-200"
+                className="flex items-center gap-2 px-4 py-2 text-purple-200 hover:text-white transition-colors duration-200"
               >
                 <svg
                   className="w-6 h-6"
@@ -78,7 +119,7 @@ export default function Home() {
           </div>
 
           {/* Copyright */}
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-purple-300">
             <p>&copy; {new Date().getFullYear()} Cultural Translator. Powered by AI.</p>
           </div>
         </div>
