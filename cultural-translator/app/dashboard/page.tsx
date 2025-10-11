@@ -46,7 +46,7 @@ interface RecentLog {
 interface DashboardData {
   memory: {
     userId: string;
-    preferences: Record<string, any>;
+    preferences: Record<string, unknown>;
     feedbackStats: {
       totalPositive: number;
       totalNegative: number;
@@ -373,8 +373,8 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-800 font-medium mb-1">"{log.originalText}"</p>
-                      <p className="text-gray-600 italic">→ "{log.translation}"</p>
+                      <p className="text-gray-800 font-medium mb-1">&quot;{log.originalText}&quot;</p>
+                      <p className="text-gray-600 italic">→ &quot;{log.translation}&quot;</p>
                     </div>
                     <span className="text-gray-500 text-xs ml-4">
                       {formatDate(log.timestamp)}

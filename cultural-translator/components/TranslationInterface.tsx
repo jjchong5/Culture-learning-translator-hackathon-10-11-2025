@@ -22,6 +22,19 @@ interface ReasoningStep {
   isActive: boolean;
 }
 
+// Context detection result
+interface DetectedContext {
+  type: 'business' | 'casual' | 'technical' | null;
+  suggestedTone: string;
+  confidence: number;
+}
+
+// Memory suggestion
+interface MemorySuggestion {
+  formality: number;
+  language: string;
+}
+
 export default function TranslationInterface() {
   // State management
   const [inputText, setInputText] = useState('');
@@ -37,6 +50,15 @@ export default function TranslationInterface() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  // Proactive suggestion states
+  const [detectedContext, setDetectedContext] = useState<DetectedContext | null>(null);
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const [memorySuggestion, setMemorySuggestion] = useState<MemorySuggestion | null>(null);
+  const [showMemorySuggestion, setShowMemorySuggestion] = useState(false);
+  const [showLowConfidenceWarning, setShowLowConfidenceWarning] = useState(false);
+  const [lowConfidenceReason, setLowConfidenceReason] = useState('');
+  const [suggestedPreferences, setSuggestedPreferences] = useState<{ formality: number; context: string } | null>(null);
+
   // Character count
   const charCount = inputText.length;
   const maxChars = 1000;
@@ -48,6 +70,116 @@ export default function TranslationInterface() {
     { icon: '🌍', label: 'ADAPTING...', text: '', isComplete: false, isActive: false },
     { icon: '✅', label: 'COMPLETE!', text: '', isComplete: false, isActive: false },
   ];
+
+  // Detect context from input text
+  const detectContext = (text: string): DetectedContext | null => {
+    if (text.length < 20) return null;
+
+    const lowerText = text.toLowerCase();
+
+    // Business context keywords
+    const businessKeywords = ['meeting', 'email', 'report', 'presentation', 'proposal', 'contract', 'deadline', 'professional', 'client', 'business'];
+    const businessMatches = businessKeywords.filter(keyword => lowerText.includes(keyword)).length;
+
+    // Casual context keywords
+    const casualKeywords = ['thanks', 'hey', 'lol', 'yeah', 'cool', 'awesome', 'buddy', 'friend', 'hang out', 'btw'];
+    const casualMatches = casualKeywords.filter(keyword => lowerText.includes(keyword)).length;
+
+    // Technical context keywords
+    const technicalKeywords = ['bug', 'api', 'function', 'code', 'error', 'database', 'server', 'algorithm', 'debug', 'implement'];
+    const technicalMatches = technicalKeywords.filter(keyword => lowerText.includes(keyword)).length;
+
+    // Determine the context with highest matches
+    const maxMatches = Math.max(businessMatches, casualMatches, technicalMatches);
+
+    if (maxMatches === 0) return null;
+
+    if (businessMatches === maxMatches && businessMatches >= 1) {
+      return {
+        type: 'business',
+        suggestedTone: 'formal',
+        confidence: Math.min(businessMatches * 0.3, 0.9),
+      };
+    } else if (casualMatches === maxMatches && casualMatches >= 1) {
+      return {
+        type: 'casual',
+        suggestedTone: 'informal',
+        confidence: Math.min(casualMatches * 0.3, 0.9),
+      };
+    } else if (technicalMatches === maxMatches && technicalMatches >= 1) {
+      return {
+        type: 'technical',
+        suggestedTone: 'neutral but precise',
+        confidence: Math.min(technicalMatches * 0.3, 0.9),
+      };
+    }
+
+    return null;
+  };
+
+  // Effect to detect context as user types
+  useEffect(() => {
+    if (inputText.length >= 20) {
+      const context = detectContext(inputText);
+      setDetectedContext(context);
+      setShowSuggestion(context !== null);
+    } else {
+      setDetectedContext(null);
+      setShowSuggestion(false);
+    }
+  }, [inputText]);
+
+  // Fetch memory suggestions for target language
+  useEffect(() => {
+    const fetchMemorySuggestion = async () => {
+      if (!targetLang) return;
+
+      try {
+        const response = await fetch(`/api/memory?userId=demo-user&language=${targetLang}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.memory) {
+            setMemorySuggestion({
+              formality: data.memory.preferences?.formality || 0.7,
+              language: targetLang,
+            });
+            setShowMemorySuggestion(true);
+          } else {
+            setMemorySuggestion(null);
+            setShowMemorySuggestion(false);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch memory suggestion:', err);
+      }
+    };
+
+    fetchMemorySuggestion();
+  }, [targetLang]);
+
+  // Apply suggested preferences
+  const applySuggestedPreferences = () => {
+    if (detectedContext && detectedContext.type) {
+      // Store the suggested preferences to be sent with translation
+      let formalityLevel = 0.5;
+      if (detectedContext.type === 'business') formalityLevel = 0.9;
+      else if (detectedContext.type === 'casual') formalityLevel = 0.3;
+      else if (detectedContext.type === 'technical') formalityLevel = 0.7;
+
+      setSuggestedPreferences({
+        formality: formalityLevel,
+        context: detectedContext.type,
+      });
+
+      setShowSuggestion(false);
+      showToastMessage(`Applied ${detectedContext.suggestedTone} tone preference`);
+    }
+  };
+
+  // Dismiss suggestion
+  const dismissSuggestion = () => {
+    setShowSuggestion(false);
+  };
 
   // Handle translation
   const handleTranslate = async () => {
@@ -68,19 +200,32 @@ export default function TranslationInterface() {
     setReasoningSteps(initReasoningSteps());
     setFeedbackGiven(false);
     setMessageId('');
+    setShowLowConfidenceWarning(false);
 
     try {
-      // Call agent-translate API
+      // Call agent-translate API with suggested preferences if available
+      const requestBody: {
+        text: string;
+        targetLang: string;
+        userId: string;
+        preferences?: { formality: number; context: string };
+      } = {
+        text: inputText,
+        targetLang,
+        userId: 'demo-user', // In production, get from auth
+      };
+
+      // Include suggested preferences if user accepted them
+      if (suggestedPreferences) {
+        requestBody.preferences = suggestedPreferences;
+      }
+
       const response = await fetch('/api/agent-translate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          text: inputText,
-          targetLang,
-          userId: 'demo-user', // In production, get from auth
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data: TranslationResponse & { error?: string } = await response.json();
@@ -93,6 +238,16 @@ export default function TranslationInterface() {
       setTranslation(data.translation);
       setConfidence(data.confidence);
       setMemoryUsed(data.memoryUsed);
+
+      // Check for low confidence and show warning
+      if (data.confidence < 0.60) {
+        setShowLowConfidenceWarning(true);
+        setLowConfidenceReason(
+          data.reasoning && data.reasoning.length > 0
+            ? data.reasoning[0]
+            : 'The input text may be ambiguous or complex'
+        );
+      }
 
       // Animate reasoning steps
       const steps = initReasoningSteps();
@@ -187,6 +342,10 @@ export default function TranslationInterface() {
     setError('');
     setFeedbackGiven(false);
     setMessageId('');
+    setDetectedContext(null);
+    setShowSuggestion(false);
+    setShowLowConfidenceWarning(false);
+    setSuggestedPreferences(null);
   };
 
   // Get confidence color
@@ -265,6 +424,57 @@ export default function TranslationInterface() {
                   ))}
                 </select>
               </div>
+
+              {/* Context Suggestion Card */}
+              {showSuggestion && detectedContext && (
+                <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl shadow-md animate-slideDown">
+                  <button
+                    onClick={dismissSuggestion}
+                    className="float-right text-gray-400 hover:text-gray-600 font-bold"
+                  >
+                    ✕
+                  </button>
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">💡</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-900 mb-3">
+                        This looks like a <strong>{detectedContext.type}</strong> context - should I use a <strong>{detectedContext.suggestedTone}</strong> tone?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={applySuggestedPreferences}
+                          className="flex-1 py-2 px-3 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-all"
+                        >
+                          Yes, apply
+                        </button>
+                        <button
+                          onClick={dismissSuggestion}
+                          className="flex-1 py-2 px-3 bg-white text-blue-600 border-2 border-blue-300 rounded-lg font-medium text-sm hover:bg-blue-50 transition-all"
+                        >
+                          No, I&apos;ll decide
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Memory-Based Suggestion Card */}
+              {showMemorySuggestion && memorySuggestion && !showSuggestion && (
+                <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl shadow-md animate-slideDown">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">🧠</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-purple-900">
+                        I remember you prefer <strong>{Math.round(memorySuggestion.formality * 100)}%</strong> formality for <strong>{memorySuggestion.language}</strong>
+                      </p>
+                      <p className="text-xs text-purple-700 mt-1">
+                        This will be automatically applied unless you change it
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Translate Button */}
               <button
@@ -376,6 +586,26 @@ export default function TranslationInterface() {
               {/* Translation Output */}
               {translation ? (
                 <div className="space-y-6">
+                  {/* Low Confidence Warning */}
+                  {showLowConfidenceWarning && (
+                    <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-400 rounded-xl mb-4 animate-slideDown">
+                      <div className="flex items-start gap-3 mb-3">
+                        <span className="text-2xl">⚠️</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-amber-900 mb-1">
+                            I&apos;m uncertain about this translation
+                          </p>
+                          <p className="text-xs text-amber-800 leading-relaxed">
+                            {lowConfidenceReason}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-amber-700 font-medium">
+                        💡 Would you like to rephrase or add more context?
+                      </p>
+                    </div>
+                  )}
+
                   {/* Translated Text */}
                   <div className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl border-2 border-primary/20">
                     <p className="text-lg leading-relaxed text-gray-800 font-medium">
@@ -492,6 +722,18 @@ export default function TranslationInterface() {
             opacity: 1;
           }
         }
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+            max-height: 0;
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            max-height: 300px;
+          }
+        }
         .animation-delay-200 {
           animation-delay: 0.2s;
         }
@@ -500,6 +742,9 @@ export default function TranslationInterface() {
         }
         .animate-slideIn {
           animation: slideIn 0.3s ease-out;
+        }
+        .animate-slideDown {
+          animation: slideDown 0.4s ease-out;
         }
       `}</style>
     </div>
