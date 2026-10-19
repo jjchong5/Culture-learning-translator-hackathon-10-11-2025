@@ -22,9 +22,6 @@ Next.js 14 | Fireworks AI (Translation + Embeddings) | MongoDB Atlas Vector Sear
 4. Set up MongoDB Vector Search index (see [SEMANTIC_SEARCH_SETUP.md](cultural-translator/SEMANTIC_SEARCH_SETUP.md))
 5. `npm run dev`
 
-## 📸 Screenshots
-[Insert 3-4 screenshots showing reasoning, memory, dashboard]
-
 ## 🎯 What Makes It Agentic?
 Unlike traditional translation APIs, our agent:
 - **Shows transparent reasoning** - See exactly how it thinks
